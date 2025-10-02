@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rugberds $BERD Airdrop Checker</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5; /* Indigo-600 */
+            --success-color: #10b981; /* Emerald-500 */
+            --danger-color: #ef4444; /* Red-500 */
+            --text-color: #e5e7eb; /* Gray-200 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate-900 */
+        }
+
+        /* Custom Keyframe for scanning glow */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px var(--primary-color), 0 0 5px var(--primary-color) inset; }
+            50% { box-shadow: 0 0 30px var(--primary-color), 0 0 10px var(--primary-color) inset; }
+        }
+
+        /* Custom Keyframe for the checkmark bounce */
+        @keyframes check-bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-30px); }
+            60% { transform: translateY(-15px); }
+        }
+
+        /* Custom Keyframe for rotating scanner line */
+        @keyframes rotate-scanner {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .scanning-animation {
+            animation: pulse-glow 1.5s infinite ease-in-out;
+        }
+
+        .rotate-scanner-line {
+            animation: rotate-scanner 1.5s linear infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Application Container -->
+    <div class="w-full max-w-lg mx-auto bg-slate-800 p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-700">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-indigo-600 mb-2">
+                Rugberds $BERD Airdrop Vault
+            </h1>
+            <p class="text-slate-400 text-sm mb-4">Check your wallet's eligibility status for the $BERD token snapshot.</p>
+            <a href="https://x.com/rugberds?s=21" target="_blank" class="inline-flex items-center text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition duration-200">
+                <i data-lucide="x" class="w-3.5 h-3.5 mr-1"></i>
+                Official Project Link
+            </a>
+        </header>
+
+        <!-- Data Loading Status -->
+        <div id="data-loading-status" class="text-center p-4 mb-6 bg-yellow-900/40 border border-yellow-500/70 rounded-xl transition duration-500">
+            <h3 id="data-status-title" class="text-lg font-bold text-yellow-300">Loading Airdrop Data...</h3>
+            <p id="data-status-message" class="text-yellow-400 text-sm mt-1">Fetching eligible wallets locally to ensure fast, reliable checks.</p>
+        </div>
+
+        <!-- Input Form -->
+        <div id="input-section">
+            <label for="wallet-address" class="block text-sm font-medium text-slate-300 mb-2">
+                Enter Your Public Wallet Address (0x...)
+            </label>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <input
+                    type="text"
+                    id="wallet-address"
+                    placeholder="Loading data..."
+                    class="flex-grow p-3 bg-slate-700 text-slate-100 border border-slate-600 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-500 transition duration-300"
+                    maxlength="42"
+                    disabled
+                >
+                <button
+                    id="check-button"
+                    class="flex items-center justify-center px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-300 shadow-md shadow-indigo-500/50 active:scale-95 disabled:bg-slate-600 disabled:shadow-none"
+                    onclick="checkEligibility()"
+                    disabled
+                >
+                    <span id="button-text">Check Eligibility</span>
+                    <i data-lucide="scan" id="button-icon" class="w-5 h-5 ml-2 transition-transform"></i>
+                </button>
+            </div>
+            <p class="mt-4 text-xs text-slate-500 text-center">
+                ⚠️ <strong>SECURITY NOTE:</strong> Only enter your <strong>public</strong> address. You will <strong>never</strong> be asked to connect your wallet or sign a transaction on this page.
+            </p>
+        </div>
+
+        <!-- Results Display Section -->
+        <div id="result-section" class="hidden mt-8">
+            <!-- Loading State -->
+            <div id="loading-state" class="hidden text-center p-8 bg-slate-700/50 rounded-2xl border border-indigo-500/50">
+                <div class="relative inline-flex items-center justify-center w-20 h-20 mb-4">
+                    <div class="absolute w-full h-full border-4 border-slate-600 rounded-full"></div>
+                    <div class="absolute w-full h-full border-4 border-indigo-500 rounded-full rotate-scanner-line"></div>
+                    <i data-lucide="database-zap" class="w-8 h-8 text-indigo-400 scanning-animation"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-200">Scanning the Ledger...</h2>
+                <p class="text-slate-400 text-sm mt-1">Verifying address against the official snapshot data.</p>
+            </div>
+
+            <!-- Success State -->
+            <div id="success-state" class="hidden text-center p-10 rounded-2xl bg-emerald-900/40 border border-emerald-500/70">
+                <i data-lucide="check-circle" class="w-16 h-16 text-emerald-400 mx-auto mb-4" style="animation: check-bounce 1s;"></i>
+                <h2 class="text-3xl font-extrabold text-emerald-300 mb-3">Congratulations!</h2>
+                <p class="text-slate-200 mb-6">
+                    Your wallet is <strong>ELIGIBLE</strong> for the Rugberds $BERD Airdrop!
+                </p>
+                <div class="bg-emerald-900/80 p-4 rounded-xl inline-block">
+                    <p class="text-sm font-medium text-emerald-400">ALLOCATION AMOUNT:</p>
+                    <p id="allocation-tier" class="text-2xl font-bold text-white mt-1">100,000 $BERD Token</p>
+                </div>
+                <button
+                    onclick="resetChecker()"
+                    class="mt-8 w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition duration-300 shadow-lg shadow-emerald-500/50 active:scale-95"
+                >
+                    Check Another Wallet
+                </button>
+            </div>
+
+            <!-- Failure State -->
+            <div id="failure-state" class="hidden text-center p-10 rounded-2xl bg-red-900/40 border border-red-500/70">
+                <i data-lucide="x-octagon" class="w-16 h-16 text-red-400 mx-auto mb-4"></i>
+                <h2 class="text-3xl font-extrabold text-red-300 mb-3">Not Eligible</h2>
+                <p class="text-slate-200">
+                    The provided address was not found in the official Rugberds $BERD snapshot data.
+                </p>
+                <p class="text-sm text-red-400 mt-4">
+                    Please ensure the address is correct and was active during the snapshot period.
+                </p>
+                <button
+                    onclick="resetChecker()"
+                    class="mt-8 w-full py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition duration-300 shadow-lg shadow-red-500/50 active:scale-95"
+                >
+                    Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import necessary icons after loading Lucide
+        lucide.createIcons();
+
+        // --- LOCAL DATA CONFIGURATION ---
+        // ⚠️ SECURITY NOTE: The content of this string is publicly visible in the source code.
+        // This array now contains the 27 unique, cleaned wallet addresses you provided.
+        const RAW_ADDRESS_DATA = `
+0xfF7A3373f14832dEc7C9E00af09fba5E8d7D68bC
+0x69609bdc7909f17c8287cc4f70a63e896db9df10
+0xA05634F04d8F7985b12488101CF0A4d195E7f456
+0x699A803EA792e8eB948Ef7756ac6030617716a0F
+0xf1a9a26e0191913dCe84cE32b3d8A593f9a3e3d7
+0xcfe0284a2122bd4e3e09c5e0f50400068d0582cb
+0xfcb4af26c474cf619d6266d894ab2d5719e71f80
+0x717E2e88D1b60fA77C18f274fD873F9Ecff8A112
+0x8deb4ec0bb1d17b4536ba68e55721a39e56a08c8
+0xaf339c926191594c4d36226c036ea8148937f42e
+0x01973B582De3Fb9Eafd41F0280Eb81E10078C473
+0x7e7d7D52947673471d55F6ff11e1592b4B358619
+0xf26d1d9d316ded16c158e1f936529a1f754198c6
+0x07d2e5a92c911655d4348d89950cfdf9c2081a32
+0x30e1a00FF0FE1799A19eEf878a8cbbab7Dc5B011
+0x7B2c1C3B0C00739199D3E9576A7e469eCf0782EA
+0xe07176ADe520Ac8042E5c6b472e211A1c2994C76
+0x64c241da53dddc78fe3d4235f30312994eba0905
+0xed9a1e30a9014c91aea5b66a3e47895cd6d8be1c
+0xc54e750085fefb4cfe9452407169481e0ff3a575
+0x8649fe595ce1b74717c3a23c5d7393ae2261f60f
+0x57e4b2e6df28522020dc0784a35f53495a679978
+0x64ddb2e0f893c90e1e7180c0379e9c5fa8b58910
+0x3a3834f1f99d5f8e0f4d3deca94fba5d673868d4
+0xc5ae1eb45826ebf68bd70b134e94bca96519ccc1
+0x61ba60ddef7eaceaeee5f01cc131fad0122f6669
+0x8fa95ea454f46d19d4bf1abc5f2b3183092e8815
+0xf3583eed98b2094d100b14515b60a5b181c67663
+0x19ed6c09b8eb0044129be76270a4887bdfa2cc5d
+0x80fadc325ef21fefd705fb12cdfc219dcf24414f
+`;
+        
+        let eligibleWallets = [];
+        let isDataLoaded = false;
+        const ALLOCATION_AMOUNT = "100,000 $BERD Token";
+        // ----------------------------------
+
+        const addressInput = document.getElementById('wallet-address');
+        const checkButton = document.getElementById('check-button');
+        const inputSection = document.getElementById('input-section');
+        const resultSection = document.getElementById('result-section');
+        const loadingState = document.getElementById('loading-state');
+        const successState = document.getElementById('success-state');
+        const failureState = document.getElementById('failure-state');
+        const allocationTier = document.getElementById('allocation-tier');
+        const dataStatusDiv = document.getElementById('data-loading-status');
+        const dataStatusTitle = document.getElementById('data-status-title');
+        const dataStatusMessage = document.getElementById('data-status-message');
+        
+        // Set the fixed allocation message on load
+        allocationTier.textContent = ALLOCATION_AMOUNT;
+
+        /**
+         * Simple validation for Ethereum-like addresses (0x followed by 40 hex characters).
+         * @param {string} address
+         * @returns {boolean}
+         */
+        function isValidAddress(address) {
+            return /^0x[a-fA-F0-9]{40}$/.test(address);
+        }
+
+        /**
+         * Parses the raw data string into a clean array of lowercase wallet addresses.
+         * This function is now simplified as the input is a list of addresses, not complex CSV.
+         * @param {string} rawText
+         * @returns {string[]} An array of lowercase, validated wallet addresses.
+         */
+        function parseRawAddresses(rawText) {
+            // Split by any whitespace or newline, filter out empty strings
+            const candidates = rawText.trim().split(/\s+/).filter(c => c.length > 0);
+            const wallets = [];
+            
+            for (const candidate of candidates) {
+                // Look for the address part, handling comma separation if it exists
+                let address = candidate.split(',')[0].trim();
+                
+                // Aggressively clean up potential leading/trailing non-hex characters
+                // and replace 'X' with 'x' for proper validation
+                address = address.replace(/[^0-9a-fA-Fx]/gi, '').replace(/^X/, 'x'); 
+
+                if (isValidAddress(address)) {
+                    wallets.push(address.toLowerCase());
+                } else {
+                    console.warn(`[DATA CLEANUP] Skipping invalid address candidate: ${candidate}`);
+                }
+            }
+            return wallets;
+        }
+
+
+        /**
+         * Loads data from the local RAW_ADDRESS_DATA string.
+         * This replaces the problematic external fetch call.
+         */
+        async function fetchSheetData() {
+            // Simulate a short loading delay for better UX
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            try {
+                const rawText = RAW_ADDRESS_DATA;
+                
+                // Use the dedicated parsing function for raw address list
+                eligibleWallets = parseRawAddresses(rawText);
+                isDataLoaded = true;
+
+                // --- DEBUG LOGGING ---
+                console.log("--- Rugberds Airdrop Checker Debug (Local Load) ---");
+                console.log(`[DEBUG] Loaded ${eligibleWallets.length} eligible addresses.`);
+                if (eligibleWallets.length > 0) {
+                    console.log(`[DEBUG] First loaded address: ${eligibleWallets[0]}`);
+                    if (eligibleWallets.length > 1) {
+                         console.log(`[DEBUG] Second loaded address: ${eligibleWallets[1]}`);
+                    }
+                } else {
+                    console.warn("[DEBUG] No valid wallet addresses were parsed from the local data. Check your RAW_ADDRESS_DATA string format.");
+                }
+                console.log("---------------------------------------");
+                // ---------------------
+
+                // Update UI for success
+                dataStatusDiv.classList.remove('bg-yellow-900/40', 'border-yellow-500/70');
+                dataStatusDiv.classList.add('bg-emerald-900/40', 'border-emerald-500/70');
+                dataStatusTitle.classList.remove('text-yellow-300');
+                dataStatusTitle.classList.add('text-emerald-300');
+
+                // *** START OF MODIFIED TEXT ***
+                dataStatusTitle.textContent = "Snapshot Successfully Taken!";
+                dataStatusMessage.textContent = "You can now check your eligibility.";
+                // *** END OF MODIFIED TEXT ***
+                
+                // Enable inputs
+                addressInput.disabled = false;
+                addressInput.placeholder = "e.g., 0xAbc123...789Def";
+                checkButton.disabled = !isValidAddress(addressInput.value.trim()); 
+
+            } catch (error) {
+                console.error("Error loading local data:", error);
+                isDataLoaded = false;
+                
+                // Update UI for failure
+                dataStatusDiv.classList.remove('bg-yellow-900/40', 'border-yellow-500/70');
+                dataStatusDiv.classList.add('bg-red-900/40', 'border-red-500/70');
+                dataStatusTitle.classList.remove('text-yellow-300');
+                dataStatusTitle.classList.add('text-red-300');
+                
+                dataStatusTitle.textContent = "Local Data Processing Failed!";
+                dataStatusMessage.textContent = "Error: Check RAW_ADDRESS_DATA format in the script.";
+                
+                // Keep button disabled
+                addressInput.disabled = false; 
+                addressInput.placeholder = "Data failed to load. Check console for details.";
+                checkButton.disabled = true;
+            }
+        }
+        
+        /**
+         * Initializes the application by fetching data.
+         */
+        async function initApp() {
+             // Disable input until data is ready
+            addressInput.disabled = true;
+            checkButton.disabled = true;
+            await fetchSheetData();
+        }
+
+
+        /**
+         * Executes the wallet eligibility check.
+         */
+        window.checkEligibility = function() {
+            const address = addressInput.value.trim();
+
+            // 1. Check data status
+            if (!isDataLoaded) {
+                 alertUser("Data Not Ready", "Airdrop eligibility list is still loading or failed to load. Cannot check eligibility.");
+                 return;
+            }
+            
+            // 2. Basic validation
+            if (!isValidAddress(address)) {
+                alertUser("Invalid Address", "Please enter a valid 42-character Ethereum address (e.g., 0x...).");
+                return;
+            }
+
+            // 3. Start loading state and animation
+            inputSection.classList.add('hidden');
+            resultSection.classList.remove('hidden');
+            loadingState.classList.remove('hidden');
+            successState.classList.add('hidden');
+            failureState.classList.add('hidden');
+
+            // Normalize the address for case-insensitive lookup
+            const normalizedAddress = address.toLowerCase();
+
+            // 4. Simulate API/network delay
+            setTimeout(() => {
+                loadingState.classList.add('hidden');
+
+                // 5. Check eligibility against loaded data
+                if (eligibleWallets.includes(normalizedAddress)) {
+                    // Success Path
+                    successState.classList.remove('hidden');
+                    lucide.createIcons();
+
+                } else {
+                    // Failure Path
+                    failureState.classList.remove('hidden');
+                    lucide.createIcons();
+                }
+
+            }, 2500); // 2.5 second simulated scan time
+        };
+
+        /**
+         * Resets the checker back to the input state.
+         */
+        window.resetChecker = function() {
+            addressInput.value = '';
+            inputSection.classList.remove('hidden');
+            resultSection.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            successState.classList.add('hidden');
+            failureState.classList.add('hidden');
+            
+            // Re-evaluate button state
+            checkButton.disabled = !isValidAddress(addressInput.value.trim()); 
+        };
+
+        /**
+         * Displays a custom alert message (since window.alert is disallowed).
+         * @param {string} title
+         * @param {string} message
+         */
+        function alertUser(title, message) {
+            const tempAlert = document.createElement('div');
+            tempAlert.className = "fixed top-4 left-1/2 -translate-x-1/2 p-4 bg-yellow-600 text-white rounded-xl shadow-lg z-50 transition-all duration-300 ease-out";
+            tempAlert.innerHTML = `<strong>${title}:</strong> ${message}`;
+            document.body.appendChild(tempAlert);
+
+            // Animate it in
+            setTimeout(() => {
+                tempAlert.style.transform = 'translateY(0) translateX(-50%)';
+            }, 10);
+
+            // Remove it after a delay
+            setTimeout(() => {
+                tempAlert.style.opacity = '0';
+                tempAlert.style.transform = 'translateY(-100px) translateX(-50%)';
+                tempAlert.addEventListener('transitionend', () => tempAlert.remove());
+            }, 3000);
+        }
+
+        // Add a listener to enable/disable button based on input content
+        addressInput.addEventListener('input', () => {
+            const address = addressInput.value.trim();
+            const isValid = isValidAddress(address);
+            
+            // Only enable if data is loaded AND address is valid
+            checkButton.disabled = !isDataLoaded || !isValid;
+
+            if (isValid) {
+                checkButton.classList.remove('disabled:bg-slate-600');
+            } else {
+                checkButton.classList.add('disabled:bg-slate-600');
+            }
+        });
+
+        // Initialize the application and start fetching data
+        window.addEventListener('load', initApp);
+
+    </script>
+</body>
+</html>
